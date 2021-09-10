@@ -3,7 +3,7 @@
 
 /* ARDUINO NANO QUADCOPTER SCHEMA https://electronoobs.com/images/Robotica/tut_5/flight_controller_schematic.png */
 
-/* RECEIVER values*/
+/* RECEIVER VARIABLES*/
 unsigned long timer_1, timer_2, timer_3, timer_4,timer_5,timer_6, current_time;
 int receiver_input[7];
 byte last_channel_1, last_channel_2, last_channel_3, last_channel_4,last_channel_5, last_channel_6;
@@ -19,7 +19,7 @@ int m4_pow =0;
 int throttle = 1500;
 int minThrottle = 1200;
 boolean start = false;
-/*  GYRO DEĞİŞKENLERİ MPU6050  */
+/*  GYRO VARIABLES MPU6050  */
 long gyroX , gyroY, gyroZ;
 int cal_int;
 float rotX, rotY, rotZ;
@@ -45,7 +45,7 @@ float pid_yaw_kp=4.0; //DEFAULT 4.0
 float pid_yaw_ki=0.02; //DEFAULT 0.02
 float pid_yaw_kd=0;  //DEFAULT 0
 
-/* PID VERIABLES */
+/* PID VARIABLES */
 float pid_roll_error,pid_roll_error_prev,pid_roll_error_mem;
 float pid_roll_output;
 float pid_roll_setpoint=0;
@@ -59,7 +59,17 @@ float pid_yaw_setpoint=0;
 
 void setup() {
   /*SENSOR SIGNAL*/
+  /*  X = PITCH
+      Y = ROLL
+      Z = YAW
+      
+    If you want to change the directions of the movement direction, 
+    change the rotations.
+    Go to the bottom of the code...
+  */
+  
   Wire.begin();
+  
   /*SERIAL MONITOR*/
   Serial.begin(9600);
   /* RECEIVER SIGNALS */
@@ -285,21 +295,21 @@ void PID(){
 
 }
   
+
+/* MPU650 READING DATA AND CALCULATING ERRORS https://www.youtube.com/watch?v=UxABxSADZ6U  */
 void printMPU(){
   counter++;
   if(counter%100==0){
     Serial.print("PITCH =   ");
-    Serial.print(gyro_pitch_input);// Ön negatif(-), Arka pozitif(+)
+    Serial.print(gyro_pitch_input);// Front is negative(-), Rear is pozitive(+)
     Serial.print("    Roll =   ");
-    Serial.print(gyro_roll_input); // Sol negatif(-), Sağ pozitif(+)
+    Serial.print(gyro_roll_input); // Left is negative(-), Right is pozitive(+)
     Serial.print("    Z =   ");
-    Serial.print(gyro_yaw_input); // Saat yönü negatif(-), Saatin tersi (+)
+    Serial.print(gyro_yaw_input); // Clockwise is negative(-)
     Serial.println();
     counter=0;
   }
 }
-
-/* MPU650 READING DATA AND CALCULATING ERRORS https://www.youtube.com/watch?v=UxABxSADZ6U  */
 void setupMPU(){
   Wire.beginTransmission(0b1101000); //This is the I2C address of the MPU (b1101000/b1101001 for AC0 low/high datasheet sec. 9.2)
   Wire.write(0x6B); //Accessing the register 6B - Power Management (Sec. 4.28)
@@ -349,7 +359,13 @@ void recordGyroRegisters() {
   gyroY = Wire.read()<<8|Wire.read(); //Store middle two bytes into accelY
   gyroZ = Wire.read()<<8|Wire.read(); //Store last two bytes into accelZ
   processGyroData();
+  
+  /* If you want to change the directions of the movement direction, 
+     change the rotations.!!! */
   gyro_pitch_input = (gyro_pitch_input * 0.7) + ((rotX) * 0.3);
   gyro_roll_input = (gyro_roll_input * 0.7) + ((rotY) * 0.3);
   gyro_yaw_input = (gyro_yaw_input * 0.7) + ((rotZ) * 0.3);
+  //gyro_pitch_input = gyro_pitch_input*(-1);   //If Front is Positive(+), Rear is negative(-). Change direction.
+  //gyro_roll_input = gyro_roll_input*(-1);     //If Left is Positive(+), Right is negative(-). Change direction.
+  //gyro_yaw_input = gyro_yaw_input*(-1);       //If Clockwise is positive(+). Change direction. 
 }
