@@ -365,7 +365,7 @@ void recordGyroRegisters() {
   gyro_pitch_input = (gyro_pitch_input * 0.7) + ((rotX) * 0.3);
   gyro_roll_input = (gyro_roll_input * 0.7) + ((rotY) * 0.3);
   gyro_yaw_input = (gyro_yaw_input * 0.7) + ((rotZ) * 0.3);
-  //gyro_pitch_input = gyro_pitch_input*(-1);   //If Front is Positive(+), Rear is negative(-). Change direction.
-  //gyro_roll_input = gyro_roll_input*(-1);     //If Left is Positive(+), Right is negative(-). Change direction.
-  //gyro_yaw_input = gyro_yaw_input*(-1);       //If Clockwise is positive(+). Change direction. 
+  //gyro_pitch_input = gyro_pitch_input*(-1);   //If Front is Positive(+), Rear is negative(-). You should replace with negative value.
+  //gyro_roll_input = gyro_roll_input*(-1);     //If Left is Positive(+), Right is negative(-). You should replace with negative value.
+  //gyro_yaw_input = gyro_yaw_input*(-1);       //If Clockwise is positive(+). You should replace with negative value.
 }
