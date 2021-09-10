@@ -4,7 +4,6 @@ byte last_channel_1, last_channel_2, last_channel_3, last_channel_4,last_channel
 
 void setup() {
   Serial.begin(9600);
-  // put your setup code here, to run once:
   PCICR |= (1 << PCIE2);                                                    //Set PCIE0 to enable PCMSK2 scan.
   PCMSK2 |= (1 << PCINT21);                                                  //Set PCINT0 (digital input 5) to trigger an interrupt on state change.
   PCMSK2 |= (1 << PCINT20);                                                  //Set PCINT1 (digital input 4)to trigger an interrupt on state change.
@@ -18,8 +17,6 @@ void setup() {
 void loop() {
   read_pwm();
   printReceiver();
-  // put your main code here, to run repeatedly:
- 
 }
 void printReceiver(){
   Serial.print(" PITCH = ");
