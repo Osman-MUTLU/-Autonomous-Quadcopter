@@ -301,13 +301,27 @@ void Motor_Control_Algorithm(){
   timer_motor_3 = motor_3_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-3 pulse.
   timer_motor_4 = motor_4_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-4 pulse.
   recordGyroRegisters();
-  
-  while(PORTD >= 16){                                                       //Stay in this loop until output 3,9,10 and 11 are low.
+  boolean esc_1=false,esc_2=false,esc_3=false,esc_4=false;
+  while(true){
+    //Stay in this loop until output 3,9,10 and 11 are low.
     esc_loop_timer = micros();                                              //Read the current time.
-    if(timer_motor_1 <= esc_loop_timer)PORTD &= B11110111;                //Set digital output 3 to low if the time is expired.
-    if(timer_motor_2 <= esc_loop_timer)PORTB &= B11110111;                //Set digital output 9 to low if the time is expired.
-    if(timer_motor_3 <= esc_loop_timer)PORTB &= B11101111;                //Set digital output 10 to low if the time is expired.
-    if(timer_motor_4 <= esc_loop_timer)PORTB &= B11011111;                //Set digital output 11 to low if the time is expired.
+    if(timer_motor_1 <= esc_loop_timer){
+      PORTD &= B11110111;                //Set digital output 3 to low if the time is expired.
+      esc_1=true;
+    }
+    if(timer_motor_2 <= esc_loop_timer){
+      PORTB &= B11110111;                //Set digital output 9 to low if the time is expired.
+      esc_2=true;
+    }
+    if(timer_motor_3 <= esc_loop_timer){
+      PORTB &= B11101111;                //Set digital output 10 to low if the time is expired.
+      esc_3=true;
+    }
+    if(timer_motor_4 <= esc_loop_timer){
+      PORTB &= B11011111;                //Set digital output 11 to low if the time is expired.
+      esc_4=true;
+    }
+    if(esc_1 && esc_2 && esc_3 && esc_4) break;
   }  
 }
 
