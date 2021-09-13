@@ -1,25 +1,26 @@
 #include "Wire.h"
-#include <Servo.h>
 
 /* ARDUINO NANO QUADCOPTER SCHEMA https://electronoobs.com/images/Robotica/tut_5/flight_controller_schematic.png */
 
-/* RECEIVER VARIABLES*/
+/* RECEIVER values*/
 unsigned long timer_1, timer_2, timer_3, timer_4,timer_5,timer_6, current_time;
 int receiver_input[7];
 byte last_channel_1, last_channel_2, last_channel_3, last_channel_4,last_channel_5, last_channel_6;
+int receiver_throttle,receiver_yaw,receiver_pitch,receiver_roll,receiver_aux1,receiver_aux2;
 
 /* Timers */ 
 unsigned long loop_timer;
+unsigned long timer_motor_1, timer_motor_2, timer_motor_3, timer_motor_4, esc_timer, esc_loop_timer;
+int timer;
 /* Motors*/
-Servo M1,M2,M3,M4;
-int m1_pow =0;
-int m2_pow =0;
-int m3_pow =0;
-int m4_pow =0;
-int throttle = 1500;
+int motor_1_pow =0;
+int motor_2_pow =0;
+int motor_3_pow =0;
+int motor_4_pow =0;
+int throttle;
 int minThrottle = 1200;
 boolean start = false;
-/*  GYRO VARIABLES MPU6050  */
+/*  GYRO DEĞİŞKENLERİ MPU6050  */
 long gyroX , gyroY, gyroZ;
 int cal_int;
 float rotX, rotY, rotZ;
@@ -45,7 +46,7 @@ float pid_yaw_kp=4.0; //DEFAULT 4.0
 float pid_yaw_ki=0.02; //DEFAULT 0.02
 float pid_yaw_kd=0;  //DEFAULT 0
 
-/* PID VARIABLES */
+/* PID VERIABLES */
 float pid_roll_error,pid_roll_error_prev,pid_roll_error_mem;
 float pid_roll_output;
 float pid_roll_setpoint=0;
@@ -59,17 +60,8 @@ float pid_yaw_setpoint=0;
 
 void setup() {
   /*SENSOR SIGNAL*/
-  /*  X = PITCH
-      Y = ROLL
-      Z = YAW
-      
-    If you want to change the directions of the movement direction, 
-    change the rotations.
-    Go to the bottom of the code...
-  */
-  
   Wire.begin();
-  
+  TWBR = 12;                                                                //Set the I2C clock speed to 400kHz.
   /*SERIAL MONITOR*/
   Serial.begin(9600);
   /* RECEIVER SIGNALS */
@@ -83,12 +75,29 @@ void setup() {
   PCMSK0 |= (1 << PCINT0);                                                   //Set PCINT0 (digital input 8) to trigger an interrupt on state change.
 
   /* ARDUINO MOTOR CONTROL WITH ESC https://www.youtube.com/watch?v=uOQk8SJso6Q */
-  M1.attach(3,1000,2000);  // Top Left
-  M2.attach(10,1000,2000); // Top Right
-  M3.attach(9,1000,2000);  // Bottom Right
-  M4.attach(11,1000,2000); // Bottom Left
+  DDRD |= B00001000;//Configure digital poort 3 as output.
+  DDRB |= B00001110;   //Configure digital poort 9 , 10 and 11 as output.
   
+  for (timer = 0; timer < 1250 ; timer ++){                           //Wait 5 seconds before continuing.
+    PORTD |= B00001000;                                                     //Set digital poort 3 high.
+    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    delayMicroseconds(1000);                                                //Wait 1000us.
+    PORTD &= B11110111;                                                     //Set digital poort 3 low.
+    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
+    delayMicroseconds(3000);                                                //Wait 3000us.
+  }
   setupMPU();
+  read_pwm();
+  //Wait until the receiver is active and the throtle is set to the lower position.
+  while(!(receiver_throttle > 990 && receiver_throttle < 1070)){
+    PORTD |= B00001000;                                                     //Set digital poort 3 high.
+    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    delayMicroseconds(1000);                                                //Wait 1000us.
+    PORTD &= B11110111;                                                     //Set digital poort 3 low.
+    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
+    delay(3);
+  }
+  start=true;
   loop_timer = micros(); 
 }
 
@@ -97,7 +106,30 @@ void loop() {
   read_pwm();
   // printMPU();
   // printReceiver();
-  PID();
+  if(receiver_throttle<1100 && receiver_yaw<1100) start=true;
+  if(start == true && receiver_throttle < 1100 && receiver_yaw > 1900)start = false;
+  if(start){
+    pid_roll_setpoint = 0;
+    //We need a little dead band of 16us for better results.
+    if(receiver_roll > 1508)pid_roll_setpoint = receiver_roll - 1508;
+    else if(receiver_roll < 1492)pid_roll_setpoint = receiver_roll - 1492;
+    pid_roll_setpoint /= 3.0;  //Divide the setpoint for the PID roll controller by 3 to get angles in degrees.
+    
+    pid_pitch_setpoint = 0;
+    //We need a little dead band of 16us for better results.
+    if(receiver_pitch > 1508)pid_pitch_setpoint = receiver_pitch - 1508;
+    else if(receiver_pitch < 1492)pid_pitch_setpoint = receiver_pitch - 1492;
+    pid_pitch_setpoint /= 3.0;  //Divide the setpoint for the PID roll controller by 3 to get angles in degrees.
+    
+    pid_yaw_setpoint = 0;
+    //We need a little dead band of 16us for better results.
+    if(receiver_throttle > 1100){ //Do not yaw when turning off the motors.
+      if(receiver_yaw > 1508)pid_yaw_setpoint = (receiver_yaw - 1508)/3.0;
+      else if(receiver_yaw < 1492)pid_yaw_setpoint = (receiver_yaw - 1492)/3.0;
+    }
+    PID();
+    throttle = receiver_throttle;
+  }
   Motor_Control_Algorithm();
 }
 
@@ -106,17 +138,17 @@ void loop() {
 /* Pin Change Interruptins ISR for reading PWM signals https://www.youtube.com/watch?v=ZDtRWmBMCmw */
 void printReceiver(){
   Serial.print(" PITCH = ");
-  Serial.print(receiver_input[1]); // CH1
+  Serial.print(receiver_input[1]); // CH1 Pitch
   Serial.print("    ROLL = ");
-  Serial.print(receiver_input[2]); // CH2
+  Serial.print(receiver_input[2]); // CH2 Roll
   Serial.print("    Throttle = "); 
-  Serial.print(receiver_input[3]); // CH3
+  Serial.print(receiver_input[3]); // CH3 Throttle
   Serial.print("    YAW = ");
-  Serial.print(receiver_input[4]); // CH4
+  Serial.print(receiver_input[4]); // CH4 Yaw
   Serial.print("    AUX1 = ");
-  Serial.print(receiver_input[5]); // CH5
+  Serial.print(receiver_input[5]); // CH5 Aux1
   Serial.print("    AUX2 = ");
-  Serial.print(receiver_input[6]); // CH6
+  Serial.print(receiver_input[6]); // CH6 Aux2
   Serial.println();
 }
 void read_pwm(){
@@ -132,6 +164,12 @@ void read_pwm(){
   else if(receiver_input[5]>2000) receiver_input[5] = 2000;
   if(receiver_input[6]<1000) receiver_input[6] = 1000;
   else if(receiver_input[6]>2000) receiver_input[6] = 2000;
+  receiver_pitch=receiver_input[1];
+  receiver_roll=receiver_input[2];
+  receiver_throttle=receiver_input[3];
+  receiver_yaw=receiver_input[4];
+  receiver_aux1=receiver_input[5];
+  receiver_aux2=receiver_input[6];
 }
 ISR(PCINT2_vect){
   current_time = micros();
@@ -208,57 +246,69 @@ ISR(PCINT0_vect){
 
 /* MOTOR MIXING ALGORTIHM https://www.youtube.com/watch?v=hGcGPUqB67Q&list=PLPNM6NzYyzYqMYNc5e4_xip-yEu1jiVrr&index=1 */ 
 void Motor_Control_Algorithm(){
-  m1_pow = throttle - pid_roll_output - pid_pitch_output + pid_yaw_output;
-  m2_pow = throttle + pid_roll_output - pid_pitch_output - pid_yaw_output;
-  m3_pow = throttle + pid_roll_output + pid_pitch_output + pid_yaw_output;
-  m4_pow = throttle - pid_roll_output + pid_pitch_output - pid_yaw_output;
+  if (throttle > 1800) throttle = 1800;
   // Arka poz m3,m4 + pitch
   // Sağ poz 2,3 + roll
   // Saatin tersi poz 1,3 + yaw
-  
   if(start){
-    if(m1_pow>2000){
-      m1_pow=2000;
+    motor_1_pow = throttle - pid_roll_output - pid_pitch_output + pid_yaw_output;
+    motor_2_pow = throttle + pid_roll_output - pid_pitch_output - pid_yaw_output;
+    motor_3_pow = throttle + pid_roll_output + pid_pitch_output + pid_yaw_output;
+    motor_4_pow = throttle - pid_roll_output + pid_pitch_output - pid_yaw_output;
+     if(motor_1_pow>2000){
+      motor_1_pow=2000;
     }
-    else if(m1_pow<minThrottle){
-      m1_pow=minThrottle;
-    }
-    
-    if(m2_pow>2000){
-      m2_pow=2000;
-    }
-    else if(m2_pow<minThrottle){
-      m2_pow=minThrottle;
+    else if(motor_1_pow<minThrottle){
+      motor_1_pow=minThrottle;
     }
     
-    if(m3_pow>2000){
-      m3_pow=2000;
+    if(motor_2_pow>2000){
+      motor_2_pow=2000;
     }
-    else if(m3_pow<minThrottle){
-      m3_pow=minThrottle;
+    else if(motor_2_pow<minThrottle){
+      motor_2_pow=minThrottle;
     }
     
-    if(m4_pow>2000){
-      m4_pow=2000;
+    if(motor_3_pow>2000){
+      motor_3_pow=2000;
     }
-    else if(m4_pow<minThrottle){
-      m4_pow=minThrottle;
+    else if(motor_3_pow<minThrottle){
+      motor_3_pow=minThrottle;
     }
-    while(micros() - loop_timer < 4000); 
-    loop_timer = micros(); 
-    M1.writeMicroseconds(m1_pow);
-    M2.writeMicroseconds(m2_pow);
-    M3.writeMicroseconds(m3_pow);
-    M4.writeMicroseconds(m4_pow);
+    
+    if(motor_4_pow>2000){
+      motor_4_pow=2000;
+    }
+    else if(motor_4_pow<minThrottle){
+      motor_4_pow=minThrottle;
+    }
   }
   else{
-    while(micros() - loop_timer < 4000); 
-    loop_timer = micros(); 
-    M1.writeMicroseconds(1000);
-    M2.writeMicroseconds(1000);
-    M3.writeMicroseconds(1000);
-    M4.writeMicroseconds(1000);
+    motor_1_pow=1000;
+    motor_2_pow=1000;
+    motor_3_pow=1000;
+    motor_4_pow=1000;
   }
+  //Creating the pulses for the ESC's is explained in this video:
+  //https://youtu.be/fqEkVcqxtU8
+  while(micros() - loop_timer < 4000); 
+  loop_timer = micros(); 
+
+  PORTD |= B00001000;                                                     //Set digital poort 3 high.
+  PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+  timer_motor_1 = motor_1_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-1 pulse.
+  timer_motor_2 = motor_2_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-2 pulse.
+  timer_motor_3 = motor_3_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-3 pulse.
+  timer_motor_4 = motor_4_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-4 pulse.
+  recordGyroRegisters();
+  
+  while(PORTD >= 16){                                                       //Stay in this loop until output 3,9,10 and 11 are low.
+    esc_loop_timer = micros();                                              //Read the current time.
+    if(timer_motor_1 <= esc_loop_timer)PORTD &= B11110111;                //Set digital output 3 to low if the time is expired.
+    if(timer_motor_2 <= esc_loop_timer)PORTB &= B11110111;                //Set digital output 9 to low if the time is expired.
+    if(timer_motor_3 <= esc_loop_timer)PORTB &= B11101111;                //Set digital output 10 to low if the time is expired.
+    if(timer_motor_4 <= esc_loop_timer)PORTB &= B11011111;                //Set digital output 11 to low if the time is expired.
+  }  
 }
 
 /* PID Control video: (YMFC-3D by Joop Brokking) https://www.youtube.com/watch?v=JBvnB0279-Q */
@@ -295,21 +345,21 @@ void PID(){
 
 }
   
-
-/* MPU650 READING DATA AND CALCULATING ERRORS https://www.youtube.com/watch?v=UxABxSADZ6U  */
 void printMPU(){
   counter++;
   if(counter%100==0){
     Serial.print("PITCH =   ");
-    Serial.print(gyro_pitch_input);// Front is negative(-), Rear is pozitive(+)
+    Serial.print(gyro_pitch_input);// Ön negatif(-), Arka pozitif(+)
     Serial.print("    Roll =   ");
-    Serial.print(gyro_roll_input); // Left is negative(-), Right is pozitive(+)
+    Serial.print(gyro_roll_input); // Sol negatif(-), Sağ pozitif(+)
     Serial.print("    Z =   ");
-    Serial.print(gyro_yaw_input); // Clockwise is negative(-)
+    Serial.print(gyro_yaw_input); // Saat yönü negatif(-), Saatin tersi (+)
     Serial.println();
     counter=0;
   }
 }
+
+/* MPU650 READING DATA AND CALCULATING ERRORS https://www.youtube.com/watch?v=UxABxSADZ6U  */
 void setupMPU(){
   Wire.beginTransmission(0b1101000); //This is the I2C address of the MPU (b1101000/b1101001 for AC0 low/high datasheet sec. 9.2)
   Wire.write(0x6B); //Accessing the register 6B - Power Management (Sec. 4.28)
@@ -330,7 +380,11 @@ void setupMPU(){
     calX += rotX;
     calY += rotY; 
     calZ += rotZ;
-    delayMicroseconds(1000);
+    PORTD |= B00001000;                                                     //Set digital poort 3 high.
+    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    delayMicroseconds(1000);                                                //Wait 1000us.
+    PORTD &= B11110111;                                                     //Set digital poort 3 low.
+    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
     delay(3);
   }
   Serial.println();
@@ -359,13 +413,7 @@ void recordGyroRegisters() {
   gyroY = Wire.read()<<8|Wire.read(); //Store middle two bytes into accelY
   gyroZ = Wire.read()<<8|Wire.read(); //Store last two bytes into accelZ
   processGyroData();
-  
-  /* If you want to change the directions of the movement direction, 
-     change the rotations.!!! */
   gyro_pitch_input = (gyro_pitch_input * 0.7) + ((rotX) * 0.3);
   gyro_roll_input = (gyro_roll_input * 0.7) + ((rotY) * 0.3);
   gyro_yaw_input = (gyro_yaw_input * 0.7) + ((rotZ) * 0.3);
-  //gyro_pitch_input = gyro_pitch_input*(-1);   //If Front is Positive(+), Rear is negative(-). You should replace with negative value.
-  //gyro_roll_input = gyro_roll_input*(-1);     //If Left is Positive(+), Right is negative(-). You should replace with negative value.
-  //gyro_yaw_input = gyro_yaw_input*(-1);       //If Clockwise is positive(+). You should replace with negative value.
 }
