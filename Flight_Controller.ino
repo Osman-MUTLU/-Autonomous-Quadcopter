@@ -76,7 +76,7 @@ void setup() {
 
   /* ARDUINO MOTOR CONTROL WITH ESC https://www.youtube.com/watch?v=uOQk8SJso6Q */
   DDRD |= B00001000;//Configure digital poort 3 as output.
-  DDRB |= B00001110;   //Configure digital poort 9 , 10 and 11 as output.
+  DDRB |= B00111000;   //Configure digital poort 9 , 10 and 11 as output.
   
   for (timer = 0; timer < 1250 ; timer ++){                           //Wait 5 seconds before continuing.
     PORTD |= B00001000;                                                     //Set digital poort 3 high.
