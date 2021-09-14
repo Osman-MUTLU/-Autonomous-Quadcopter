@@ -20,7 +20,7 @@ int motor_4_pow =0;
 int throttle;
 int minThrottle = 1200;
 boolean start = false;
-/*  GYRO DEĞİŞKENLERİ MPU6050  */
+/*  GYRO VARIABLES MPU6050  */
 long gyroX , gyroY, gyroZ;
 int cal_int;
 float rotX, rotY, rotZ;
@@ -46,7 +46,7 @@ float pid_yaw_kp=4.0; //DEFAULT 4.0
 float pid_yaw_ki=0.02; //DEFAULT 0.02
 float pid_yaw_kd=0;  //DEFAULT 0
 
-/* PID VERIABLES */
+/* PID VARIABLES */
 float pid_roll_error,pid_roll_error_prev,pid_roll_error_mem;
 float pid_roll_output;
 float pid_roll_setpoint=0;
