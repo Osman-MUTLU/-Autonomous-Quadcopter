@@ -26,7 +26,6 @@ void setup() {
 
 void loop() {
   throttle= receiver_input[3];
-  if(receiver_input[3]==0) throttle =2000;
   if(throttle<=min_throttle+20) throttle=1000;
   else throttle = throttle-(min_throttle-1000);
   if(throttle>1600) throttle = 2000;
