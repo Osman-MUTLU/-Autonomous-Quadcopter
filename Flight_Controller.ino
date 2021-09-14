@@ -76,14 +76,14 @@ void setup() {
 
   /* ARDUINO MOTOR CONTROL WITH ESC https://www.youtube.com/watch?v=uOQk8SJso6Q */
   DDRD |= B00001000;//Configure digital poort 3 as output.
-  DDRB |= B00111000;   //Configure digital poort 9 , 10 and 11 as output.
+  DDRB |= B00001110;   //Configure digital poort 9 , 10 and 11 as output.
   
   for (timer = 0; timer < 1250 ; timer ++){                           //Wait 5 seconds before continuing.
     PORTD |= B00001000;                                                     //Set digital poort 3 high.
-    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    PORTB |= B00001110;                                                     //Set digital poort 9, 10 and 11 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
     PORTD &= B11110111;                                                     //Set digital poort 3 low.
-    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
+    PORTB &= B11110001;                                                     //Set digital poort 9, 10 and 11 low.
     delayMicroseconds(3000);                                                //Wait 3000us.
   }
   setupMPU();
@@ -91,10 +91,10 @@ void setup() {
   //Wait until the receiver is active and the throtle is set to the lower position.
   while(!(receiver_throttle > 990 && receiver_throttle < 1070)){
     PORTD |= B00001000;                                                     //Set digital poort 3 high.
-    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    PORTB |= B00001110;                                                     //Set digital poort 9, 10 and 11 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
     PORTD &= B11110111;                                                     //Set digital poort 3 low.
-    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
+    PORTB &= B11110001;                                                     //Set digital poort 9, 10 and 11 low.
     delay(3);
   }
   start=true;
@@ -295,7 +295,7 @@ void Motor_Control_Algorithm(){
   loop_timer = micros(); 
 
   PORTD |= B00001000;                                                     //Set digital poort 3 high.
-  PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+  PORTB |= B00001110;                                                     //Set digital poort 9, 10 and 11 high.
   timer_motor_1 = motor_1_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-1 pulse.
   timer_motor_2 = motor_2_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-2 pulse.
   timer_motor_3 = motor_3_pow + loop_timer;                                     //Calculate the time of the faling edge of the esc-3 pulse.
@@ -314,11 +314,11 @@ void Motor_Control_Algorithm(){
       esc_2=true;
     }
     if(timer_motor_3 <= esc_loop_timer){
-      PORTB &= B11101111;                //Set digital output 10 to low if the time is expired.
+      PORTB &= B11111011;                //Set digital output 10 to low if the time is expired.
       esc_3=true;
     }
     if(timer_motor_4 <= esc_loop_timer){
-      PORTB &= B11011111;                //Set digital output 11 to low if the time is expired.
+      PORTB &= B11111101;                //Set digital output 11 to low if the time is expired.
       esc_4=true;
     }
     if(esc_1 && esc_2 && esc_3 && esc_4) break;
@@ -395,10 +395,10 @@ void setupMPU(){
     calY += rotY; 
     calZ += rotZ;
     PORTD |= B00001000;                                                     //Set digital poort 3 high.
-    PORTB |= B00111000;                                                     //Set digital poort 9, 10 and 11 high.
+    PORTB |= B00001110;                                                     //Set digital poort 9, 10 and 11 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
     PORTD &= B11110111;                                                     //Set digital poort 3 low.
-    PORTB &= B11000111;                                                     //Set digital poort 9, 10 and 11 low.
+    PORTB &= B11110001;                                                     //Set digital poort 9, 10 and 11 low.
     delay(3);
   }
   Serial.println();
