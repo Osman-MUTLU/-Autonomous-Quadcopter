@@ -427,7 +427,7 @@ void recordGyroRegisters() {
   gyroY = Wire.read()<<8|Wire.read(); //Store middle two bytes into accelY
   gyroZ = Wire.read()<<8|Wire.read(); //Store last two bytes into accelZ
   processGyroData();
-  gyro_pitch_input = (gyro_pitch_input * 0.7) + ((rotX) * 0.3);
-  gyro_roll_input = (gyro_roll_input * 0.7) + ((rotY) * 0.3);
-  gyro_yaw_input = (gyro_yaw_input * 0.7) + ((rotZ) * 0.3);
+  gyro_pitch_input = (gyro_pitch_input * 0.7) + ((rotX / 65.5) * 0.3);
+  gyro_roll_input = (gyro_roll_input * 0.7) + ((rotY / 65.5) * 0.3);
+  gyro_yaw_input = (gyro_yaw_input * 0.7) + ((rotZ / 65.5) * 0.3);
 }
