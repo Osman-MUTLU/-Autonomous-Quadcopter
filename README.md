@@ -8,6 +8,6 @@
 
 <!----------------------------------------------------------------------------->
 
-[Badge License]: https://img.shields.io/badge/License-GPL_3-blue.svg?style=for-the-badge
+[Badge License]: https://img.shields.io/badge/License-GPL3-015d93.svg?style=for-the-badge&labelColor=blue
 
 [License]: LICENSE
